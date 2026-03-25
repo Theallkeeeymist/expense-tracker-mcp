@@ -8,4 +8,4 @@ wheels/
 
 # Virtual environments
 .venv
-categories.json
+expenses_db
