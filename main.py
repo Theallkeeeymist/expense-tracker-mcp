@@ -2,7 +2,10 @@ from fastmcp import FastMCP
 import os
 import sqlite3
 
-DB_PATH = os.path.join(os.path.dirname(__file__),  "expenses_db")
+if os.access(os.path.dirname(__file__), os.W_OK):
+    DB_PATH = os.path.join(os.path.dirname(__file__), "expenses_db.sqlite")
+else:
+    DB_PATH = "/tmp/expenses_db.sqlite"
 CATEGORIES_PATH = os.path.join(os.path.dirname(__file__), "categories.json")
 
 mcp = FastMCP(name="Expense Tracker")
@@ -48,7 +51,7 @@ def delete_expense(id):
             "DELETE FROM Expenses WHERE id= ?",
             (id,)
         )
-        return {'status':'ok', 'id':cur.lastrowid}
+        return {'status':'ok', 'id':cur.rowcount}
 
 @mcp.tool()
 def update_expense(id, amount=None, category=None):
