@@ -3,6 +3,7 @@ import os
 import sqlite3
 
 DB_PATH = os.path.join(os.path.dirname(__file__),  "expenses_db")
+BUD_PATH = os.path.join(os.path.dirname(__file__), "budget.db")
 CATEGORIES_PATH = os.path.join(os.path.dirname(__file__), "categories.json")
 
 mcp = FastMCP(name="Expense Tracker")
@@ -19,6 +20,15 @@ def init_db():
                 note TEXT DEFAULT ''
             )
         """)
+    with sqlite3.connect(BUD_PATH) as b:
+        b.execute("""
+            CREATE TABLE IF NOT EXISTS budget(
+                category TEXT NOT NULL,
+                monthly_limit REAL NOT NULL,
+                month TEXT NOT NULL,
+                PRIMARY KEY (category, month)
+)
+        """)
 init_db()
 
 @mcp.tool()
@@ -30,6 +40,81 @@ def add_expenses(date, amount, category, subcategory='', note=''):
             (date, amount, category, subcategory, note)
         )
         return {'status': 'ok', 'id':cur.lastrowid}
+    
+@mcp.tool()
+def set_budget(category, monthly_limit, month):
+    """Sets Budget for particular CATEGORY for a month"""
+    with sqlite3.connect(BUD_PATH) as b:
+        cur = b.execute(
+            "INSERT OR REPLACE INTO budget(category, monthly_limit, month) VALUES (?,?,?)",
+            (category, monthly_limit, month)
+        )
+        return {'status':'ok', 'category':cur.lastrowid}
+    
+@mcp.tool()
+def budget_left(month, category=None):
+    """Returns remaining budget per category with warning if low or exhausted"""
+    with sqlite3.connect(DB_PATH) as e_conn:
+        e_conn.execute(f"ATTACH DATABASE '{BUD_PATH}' AS bdb")
+        query = """
+            SELECT 
+                b.category,
+                b.monthly_limit,
+                COALESCE(SUM(e.amount), 0) AS spent,
+                b.monthly_limit - COALESCE(SUM(e.amount), 0) AS remaining,
+                CASE
+                    WHEN b.monthly_limit - COALESCE(SUM(e.amount), 0) < 0 
+                        THEN 'BUDGET EXHAUSTED'
+                    WHEN b.monthly_limit - COALESCE(SUM(e.amount), 0) < 100 
+                        THEN 'WARNING: Low on budget'
+                    ELSE 'OK'
+                END AS status
+            FROM bdb.budget b
+            LEFT JOIN Expenses e 
+                ON e.category = b.category 
+                AND strftime('%Y-%m', e.date) = ?
+            WHERE b.month = ?
+        """
+        params = [month, month]
+
+        if category:
+            query += " AND b.category = ?"
+            params.append(category)
+
+        query += " GROUP BY b.category ORDER BY spent DESC"
+
+        cur = e_conn.execute(query, params)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+@mcp.tool()
+def saved_in_budget(month, category=None):
+    """Returns how much was saved under budget per category for a given month"""
+    with sqlite3.connect(DB_PATH) as e_conn:
+        e_conn.execute(f"ATTACH DATABASE '{BUD_PATH}' AS bdb")
+        query = """
+            SELECT 
+                b.category,
+                b.monthly_limit,
+                COALESCE(SUM(e.amount), 0) AS spent,
+                b.monthly_limit - COALESCE(SUM(e.amount), 0) AS saved
+            FROM bdb.budget b
+            LEFT JOIN Expenses e 
+                ON e.category = b.category 
+                AND strftime('%Y-%m', e.date) = ?
+            WHERE b.month = ?
+        """
+        params = [month, month]
+
+        if category:
+            query += " AND b.category = ?"
+            params.append(category)
+
+        query += " GROUP BY b.category HAVING saved > 0 ORDER BY saved DESC"
+
+        cur = e_conn.execute(query, params)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
 
 @mcp.tool()  
 def list_expenses(start_date, end_date): 
@@ -49,6 +134,37 @@ def delete_expense(id):
             (id,)
         )
         return {'status':'ok', 'id':cur.lastrowid}
+
+@mcp.tool()
+def delete_budget(category):
+    """Deletes a set budget in case of mistake"""
+    with sqlite3.connect(BUD_PATH) as b:
+        cur = b.execute(
+            "DELETE FROM budget WHERE category=?",
+            (category,)
+        )
+        return {'status':'ok', 'category':cur.lastrowid}
+    
+@mcp.tool()
+def fetch_budget(month, category=None):
+    """Returns Set Budget for a month can give explicityly for a category too if mentioned."""
+    with sqlite3.connect(BUD_PATH) as b:
+        query=("""
+            SELECT monthly_limit FROM budget
+            WHERE month=?
+        """)
+        params = [month]
+
+        if category:
+            query+=" AND category = ?"
+            params.append(category)
+
+        cur = b.execute(query, params)
+        cols = [d[0] for d in cur.description]
+
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+    
 
 @mcp.tool()
 def update_expense(id, amount=None, category=None):
@@ -94,7 +210,8 @@ def summarize(start_date, end_date, category=None):
         if category:
             query += " AND category = ?"
             params.append(category)
- 
+        query += " GROUP BY category"
+        
         cur = c.execute(query, params)
         cols = [d[0] for d in cur.description]
 

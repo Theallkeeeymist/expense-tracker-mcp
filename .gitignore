@@ -9,3 +9,5 @@ wheels/
 # Virtual environments
 .venv
 expenses_db
+budget.db
+expenses_db.sqlite

@@ -38,6 +38,9 @@ async def add_expenses(date, amount, category, subcategory='', note=''):
         await db.commit()
         return {'status': 'ok', 'id': cur.lastrowid}
 
+@mcp.tool()
+async def set_budget(category, amount)
+
 
 @mcp.tool()
 async def list_expenses(start_date, end_date):
