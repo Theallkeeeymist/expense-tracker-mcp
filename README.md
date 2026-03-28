@@ -37,7 +37,7 @@ Before you begin, make sure you have the following installed:
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/your-username/expense-tracker-mcp.git
+git clone https://github.com/Theallkeeeymist/expense-tracker-mcp.git
 cd expense-tracker-mcp
 ```
 
