@@ -75,25 +75,60 @@ MCP servers are configured via a JSON config file that Claude Desktop reads on s
 ```json
 {
   "mcpServers": {
-    "expense-tracker": {
-      "command": "uv",
+    "expense-tracker-server": {
+      "command": "/absolute/path/to/uv.exe",
       "args": [
         "run",
-        "--directory",
+        "--project",
         "/absolute/path/to/expense-tracker-mcp",
-        "python",
-        "main_local.py"
+        "fastmcp",
+        "run",
+        "/absolute/path/to/expense-tracker-mcp/main_local.py:mcp"
       ]
     }
   }
 }
 ```
 
-> Replace `/absolute/path/to/expense-tracker-mcp` with the actual full path to the cloned folder.
+> Replace `/absolute/path/to/uv.exe` with the full path to your `uv` executable.
 >
-> **Example on macOS:** `/Users/yourname/projects/expense-tracker-mcp`
+> **Example on Windows:**
+> ```json
+> {
+>   "mcpServers": {
+>     "expense-tracker-server": {
+>       "command": "C:\\Users\\YourName\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\uv.exe",
+>       "args": [
+>         "run",
+>         "--project",
+>         "C:\\Users\\YourName\\PycharmProjects\\expense-tracker-mcp",
+>         "fastmcp",
+>         "run",
+>         "C:\\Users\\YourName\\PycharmProjects\\expense-tracker-mcp\\main_local.py:mcp"
+>       ]
+>     }
+>   }
+> }
+> ```
 >
-> **Example on Windows:** `C:\\Users\\yourname\\projects\\expense-tracker-mcp`
+> **Example on macOS/Linux:**
+> ```json
+> {
+>   "mcpServers": {
+>     "expense-tracker-server": {
+>       "command": "/Users/yourname/.local/bin/uv",
+>       "args": [
+>         "run",
+>         "--project",
+>         "/Users/yourname/projects/expense-tracker-mcp",
+>         "fastmcp",
+>         "run",
+>         "/Users/yourname/projects/expense-tracker-mcp/main_local.py:mcp"
+>       ]
+>     }
+>   }
+> }
+> ```
 
 **3. Restart Claude Desktop**
 
